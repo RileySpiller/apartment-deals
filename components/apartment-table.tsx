@@ -3,16 +3,27 @@
 import { Check, ChevronDown, MapPin, ExternalLink, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Apartment } from "@/lib/airtable";
+import { useRouter } from "next/navigation";
+import ApartmentDetailsPanel from "./apartment-details-panel";
 
-export default function ApartmentTable() {
+interface ApartmentTableProps {
+  initialCity?: string;
+}
+
+export default function ApartmentTable({ initialCity }: ApartmentTableProps) {
+  const router = useRouter();
   const [apartments, setApartments] = useState<Apartment[]>([]);
   const [filteredApartments, setFilteredApartments] = useState<Apartment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedApartment, setSelectedApartment] = useState<Apartment | null>(
+    null
+  );
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
 
   // Filter states
   const [filters, setFilters] = useState({
-    city: "",
+    city: initialCity || "",
     dealScore: "",
     priceScore: "",
     lookAndLease: "",
@@ -28,6 +39,12 @@ export default function ApartmentTable() {
 
   // Filter dropdown states
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+
+  // Add sort state
+  const [sortConfig, setSortConfig] = useState<{
+    key: keyof Apartment;
+    direction: "asc" | "desc";
+  } | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -101,8 +118,11 @@ export default function ApartmentTable() {
       );
     }
 
+    // Apply sorting
+    result = sortData(result);
+
     setFilteredApartments(result);
-  }, [filters, apartments]);
+  }, [filters, apartments, sortConfig]);
 
   // Toggle dropdown
   const toggleDropdown = (dropdown: string) => {
@@ -125,7 +145,7 @@ export default function ApartmentTable() {
   // Clear all filters
   const clearFilters = () => {
     setFilters({
-      city: "",
+      city: initialCity || "",
       dealScore: "",
       priceScore: "",
       lookAndLease: "",
@@ -250,6 +270,55 @@ export default function ApartmentTable() {
     </div>
   );
 
+  // Add sort function
+  const sortData = (data: Apartment[]) => {
+    if (!sortConfig) return data;
+
+    return [...data].sort((a, b) => {
+      const aValue = a[sortConfig.key];
+      const bValue = b[sortConfig.key];
+
+      if (aValue === undefined && bValue === undefined) return 0;
+      if (aValue === undefined) return 1;
+      if (bValue === undefined) return -1;
+
+      let comparison = 0;
+      if (Array.isArray(aValue) && Array.isArray(bValue)) {
+        comparison = aValue.join(",").localeCompare(bValue.join(","));
+      } else if (typeof aValue === "boolean" && typeof bValue === "boolean") {
+        comparison = aValue === bValue ? 0 : aValue ? -1 : 1;
+      } else {
+        comparison = String(aValue).localeCompare(String(bValue));
+      }
+
+      return sortConfig.direction === "asc" ? comparison : -comparison;
+    });
+  };
+
+  // Add sort handler
+  const handleSort = (key: keyof Apartment) => {
+    setSortConfig((currentSort) => {
+      if (currentSort?.key === key) {
+        if (currentSort.direction === "asc") {
+          return { key, direction: "desc" };
+        }
+        return null;
+      }
+      return { key, direction: "asc" };
+    });
+  };
+
+  // Handle apartment selection
+  const handleApartmentClick = (apartment: Apartment) => {
+    // Check if we're on mobile
+    if (window.innerWidth < 768) {
+      router.push(`/apartments/${apartment.id}`);
+    } else {
+      setSelectedApartment(apartment);
+      setIsPanelOpen(true);
+    }
+  };
+
   if (loading) {
     return <div className="text-center py-10">Loading apartments...</div>;
   }
@@ -331,84 +400,245 @@ export default function ApartmentTable() {
         <table className="min-w-full bg-white border border-gray-200 text-xs">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                City
+              <th
+                className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort("city")}
+              >
+                <div className="flex items-center">
+                  City
+                  {sortConfig?.key === "city" && (
+                    <span className="ml-1">
+                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                    </span>
+                  )}
+                </div>
               </th>
-              <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Property Name
+              <th
+                className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort("propertyName")}
+              >
+                <div className="flex items-center">
+                  Property Name
+                  {sortConfig?.key === "propertyName" && (
+                    <span className="ml-1">
+                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                    </span>
+                  )}
+                </div>
               </th>
-              <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                AD Fav
+              <th
+                className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort("adFavorite")}
+              >
+                <div className="flex items-center">
+                  AD Fav
+                  {sortConfig?.key === "adFavorite" && (
+                    <span className="ml-1">
+                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                    </span>
+                  )}
+                </div>
               </th>
-              <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Deal Score
+              <th
+                className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort("dealScore")}
+              >
+                <div className="flex items-center">
+                  Deal Score
+                  {sortConfig?.key === "dealScore" && (
+                    <span className="ml-1">
+                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                    </span>
+                  )}
+                </div>
               </th>
-              <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Adv
+              <th
+                className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort("advertised")}
+              >
+                <div className="flex items-center">
+                  Adv
+                  {sortConfig?.key === "advertised" && (
+                    <span className="ml-1">
+                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                    </span>
+                  )}
+                </div>
               </th>
-              <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                L&L
+              <th
+                className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort("lookAndLease")}
+              >
+                <div className="flex items-center">
+                  L&L
+                  {sortConfig?.key === "lookAndLease" && (
+                    <span className="ml-1">
+                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                    </span>
+                  )}
+                </div>
               </th>
-              <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Deal Ends
+              <th
+                className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort("dealEnds")}
+              >
+                <div className="flex items-center">
+                  Deal Ends
+                  {sortConfig?.key === "dealEnds" && (
+                    <span className="ml-1">
+                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                    </span>
+                  )}
+                </div>
               </th>
-              <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Applies To
+              <th
+                className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort("appliesTo")}
+              >
+                <div className="flex items-center">
+                  Applies To
+                  {sortConfig?.key === "appliesTo" && (
+                    <span className="ml-1">
+                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                    </span>
+                  )}
+                </div>
               </th>
-              <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Free Rent
+              <th
+                className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort("freeRent")}
+              >
+                <div className="flex items-center">
+                  Free Rent
+                  {sortConfig?.key === "freeRent" && (
+                    <span className="ml-1">
+                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                    </span>
+                  )}
+                </div>
               </th>
-              <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                App Fee
+              <th
+                className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort("applicationFee")}
+              >
+                <div className="flex items-center">
+                  App Fee
+                  {sortConfig?.key === "applicationFee" && (
+                    <span className="ml-1">
+                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                    </span>
+                  )}
+                </div>
               </th>
-              <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Admin Fee
+              <th
+                className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort("adminFee")}
+              >
+                <div className="flex items-center">
+                  Admin Fee
+                  {sortConfig?.key === "adminFee" && (
+                    <span className="ml-1">
+                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                    </span>
+                  )}
+                </div>
               </th>
-              <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Gift Card
+              <th
+                className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort("giftCard")}
+              >
+                <div className="flex items-center">
+                  Gift Card
+                  {sortConfig?.key === "giftCard" && (
+                    <span className="ml-1">
+                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                    </span>
+                  )}
+                </div>
               </th>
-              <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                No Rent Until
+              <th
+                className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort("securityDeposit")}
+              >
+                <div className="flex items-center">
+                  Security Dep
+                  {sortConfig?.key === "securityDeposit" && (
+                    <span className="ml-1">
+                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                    </span>
+                  )}
+                </div>
               </th>
-              <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Security Dep
+              <th
+                className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort("leaseDiscount")}
+              >
+                <div className="flex items-center">
+                  Lease Disc
+                  {sortConfig?.key === "leaseDiscount" && (
+                    <span className="ml-1">
+                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                    </span>
+                  )}
+                </div>
               </th>
-              <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Lease Disc
-              </th>
-              <th className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Deal Notes
+              <th
+                className="px-2 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort("dealNotes")}
+              >
+                <div className="flex items-center">
+                  Deal Notes
+                  {sortConfig?.key === "dealNotes" && (
+                    <span className="ml-1">
+                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                    </span>
+                  )}
+                </div>
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {filteredApartments.map((apartment) => (
-              <tr key={apartment.id} className="hover:bg-gray-50">
+              <tr
+                key={apartment.id}
+                className="hover:bg-gray-50 cursor-pointer"
+                onClick={() => handleApartmentClick(apartment)}
+              >
                 <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-500">
                   {apartment.city || "-"}
                 </td>
                 <td className="px-2 py-1 whitespace-nowrap">
-                  <div className="flex flex-col">
-                    <div className="text-xs font-medium text-gray-900">
-                      {apartment.propertyName}
-                    </div>
-                    {apartment.streetAddress && (
-                      <div className="text-xs text-gray-500 flex items-center">
-                        <MapPin className="h-2 w-2 mr-1" />
-                        {apartment.streetAddress}
+                  <div className="flex items-start space-x-2">
+                    {apartment.thumbnail && (
+                      <img
+                        src={apartment.thumbnail}
+                        alt={`${apartment.propertyName} thumbnail`}
+                        className="h-12 w-12 object-cover rounded-md flex-shrink-0"
+                      />
+                    )}
+                    <div className="flex flex-col">
+                      <div className="text-xs font-medium text-gray-900">
+                        {apartment.propertyName}
                       </div>
-                    )}
-                    {apartment.website && (
-                      <a
-                        href={apartment.website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-500 hover:underline text-xs flex items-center"
-                      >
-                        <ExternalLink className="h-2 w-2 mr-1" />
-                        Website
-                      </a>
-                    )}
+                      {apartment.streetAddress && (
+                        <div className="text-xs text-gray-500 flex items-center">
+                          <MapPin className="h-2 w-2 mr-1" />
+                          {apartment.streetAddress}
+                        </div>
+                      )}
+                      {apartment.website && (
+                        <a
+                          href={apartment.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-500 hover:underline text-xs flex items-center"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ExternalLink className="h-2 w-2 mr-1" />
+                          Website
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </td>
                 <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-500">
@@ -494,9 +724,6 @@ export default function ApartmentTable() {
                   )}
                 </td>
                 <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-500">
-                  {apartment.noRentUntil || "-"}
-                </td>
-                <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-500">
                   {apartment.securityDeposit || "-"}
                 </td>
                 <td className="px-2 py-1 whitespace-nowrap text-xs text-gray-500">
@@ -516,6 +743,16 @@ export default function ApartmentTable() {
           </tbody>
         </table>
       </div>
+
+      {/* Add the details panel */}
+      <ApartmentDetailsPanel
+        apartment={selectedApartment}
+        isOpen={isPanelOpen}
+        onClose={() => {
+          setIsPanelOpen(false);
+          setSelectedApartment(null);
+        }}
+      />
     </div>
   );
 }

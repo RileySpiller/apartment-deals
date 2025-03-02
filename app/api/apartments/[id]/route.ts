@@ -18,8 +18,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = params.id;
-    const apartment = await fetchApartmentById(id);
+    const apartment = await fetchApartmentById(params.id);
 
     if (!apartment) {
       return NextResponse.json(

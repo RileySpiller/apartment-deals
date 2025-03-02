@@ -15,36 +15,66 @@ Airtable.configure({
 // Connect to the base
 const base = Airtable.base(process.env.AIRTABLE_BASE_ID || "");
 
-// Define the Apartment type based on your table structure
-export interface Apartment {
+// Define Airtable's attachment type
+type AirtableAttachment = {
+  id: string;
+  width: number;
+  height: number;
+  url: string;
+  filename: string;
+  size: number;
+  type: string;
+  thumbnails?: {
+    small: { url: string; width: number; height: number };
+    large: { url: string; width: number; height: number };
+    full: { url: string; width: number; height: number };
+  };
+};
+
+export type Apartment = {
   id: string;
   propertyName: string;
   streetAddress?: string;
   city?: string;
   website?: string;
-  freeRent?: string[];
-  adminFee?: string[];
-  securityDeposit?: string;
   dealScore?: string;
-  dealEnds?: string;
-  neighborhood?: string[];
-  totalUnits?: number;
-  yearBuilt?: string;
-  avgSqft?: number;
-  stories?: number;
-  googleRating?: string;
-  phoneNumber?: string;
-  email?: string;
-  advertised?: boolean;
+  priceScore?: string;
   lookAndLease?: boolean;
+  advertised?: boolean;
+  freeRent?: string[];
+  applicationFee?: string;
+  adminFee?: string[];
+  giftCard?: string;
+  leaseDiscount?: string;
+  adFavorite?: boolean;
   appliesTo?: string[];
   minimumLeaseTerm?: string[];
-  adFavorite?: boolean;
-  applicationFee?: string;
-  giftCard?: string;
-  noRentUntil?: string;
-  leaseDiscount?: string;
+  affordableRental?: boolean;
   dealNotes?: string;
+  totalUnits?: string;
+  yearBuilt?: string;
+  avgSqft?: string;
+  stories?: string;
+  dealEnds?: string;
+  securityDeposit?: string;
+  thumbnail?: string;
+  logo?: string;
+  photos?: string[];
+};
+
+// Function to extract URL from Airtable attachment
+function getAttachmentUrl(
+  attachment: AirtableAttachment[] | undefined
+): string | undefined {
+  if (!attachment || attachment.length === 0) return undefined;
+  return attachment[0].url;
+}
+
+function getAttachmentUrls(
+  attachments: AirtableAttachment[] | undefined
+): string[] {
+  if (!attachments) return [];
+  return attachments.map((attachment) => attachment.url);
 }
 
 // Function to fetch all apartments from Airtable
@@ -55,17 +85,14 @@ export async function fetchApartments(): Promise<Apartment[]> {
 
     const records = await base(process.env.AIRTABLE_TABLE_NAME || "Austin")
       .select({
-        // You can add view, filter, sort options here
         view: "Grid view",
       })
       .all();
 
     console.log("Fetched records:", records.length);
 
-    // Map Airtable records to our Apartment interface
     return records.map((record) => {
       const fields = record.fields;
-      console.log("Record fields:", Object.keys(fields));
 
       return {
         id: record.id,
@@ -78,24 +105,24 @@ export async function fetchApartments(): Promise<Apartment[]> {
         securityDeposit: fields["Security Deposit"] as string,
         dealScore: fields["Deal Score"] as string,
         dealEnds: fields["Deal Ends"] as string,
-        neighborhood: fields["Neighborhood"] as string[],
-        totalUnits: fields["Total Units"] as number,
+        totalUnits: fields["Total Units"] as string,
         yearBuilt: fields["Year Built"] as string,
-        avgSqft: fields["Avg. Sqft."] as number,
-        stories: fields["Stories"] as number,
-        googleRating: fields["Google Rating"] as string,
-        phoneNumber: fields["Phone Number"] as string,
-        email: fields["Email"] as string,
+        avgSqft: fields["Avg. Sqft."] as string,
+        stories: fields["Stories"] as string,
         advertised: fields["Advertised"] as boolean,
         lookAndLease: fields["Look and Lease"] as boolean,
-        appliesTo: fields["Applies to "] as string[],
+        appliesTo: fields["Applies To"] as string[],
         minimumLeaseTerm: fields["Minimum Lease Term"] as string[],
-        adFavorite: fields["Ad Favorite"] as boolean,
+        adFavorite: fields["AD Favorite"] as boolean,
         applicationFee: fields["Application Fee"] as string,
         giftCard: fields["Gift Card"] as string,
-        noRentUntil: fields["No Rent Until"] as string,
         leaseDiscount: fields["Lease Discount"] as string,
         dealNotes: fields["Deal Notes"] as string,
+        thumbnail: getAttachmentUrl(
+          fields["Thumbnail"] as AirtableAttachment[]
+        ),
+        logo: getAttachmentUrl(fields["Logo"] as AirtableAttachment[]),
+        photos: getAttachmentUrls(fields["Photos"] as AirtableAttachment[]),
       };
     });
   } catch (error) {
@@ -130,24 +157,22 @@ export async function fetchApartmentById(
       securityDeposit: fields["Security Deposit"] as string,
       dealScore: fields["Deal Score"] as string,
       dealEnds: fields["Deal Ends"] as string,
-      neighborhood: fields["Neighborhood"] as string[],
-      totalUnits: fields["Total Units"] as number,
+      totalUnits: fields["Total Units"] as string,
       yearBuilt: fields["Year Built"] as string,
-      avgSqft: fields["Avg. Sqft."] as number,
-      stories: fields["Stories"] as number,
-      googleRating: fields["Google Rating"] as string,
-      phoneNumber: fields["Phone Number"] as string,
-      email: fields["Email"] as string,
+      avgSqft: fields["Avg. Sqft."] as string,
+      stories: fields["Stories"] as string,
       advertised: fields["Advertised"] as boolean,
       lookAndLease: fields["Look and Lease"] as boolean,
-      appliesTo: fields["Applies to "] as string[],
+      appliesTo: fields["Applies To"] as string[],
       minimumLeaseTerm: fields["Minimum Lease Term"] as string[],
-      adFavorite: fields["Ad Favorite"] as boolean,
+      adFavorite: fields["AD Favorite"] as boolean,
       applicationFee: fields["Application Fee"] as string,
       giftCard: fields["Gift Card"] as string,
-      noRentUntil: fields["No Rent Until"] as string,
       leaseDiscount: fields["Lease Discount"] as string,
       dealNotes: fields["Deal Notes"] as string,
+      thumbnail: getAttachmentUrl(fields["Thumbnail"] as AirtableAttachment[]),
+      logo: getAttachmentUrl(fields["Logo"] as AirtableAttachment[]),
+      photos: getAttachmentUrls(fields["Photos"] as AirtableAttachment[]),
     };
   } catch (error) {
     console.error("Error fetching apartment by ID:", error);
