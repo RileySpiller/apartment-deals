@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Apartment Deals
 
-## Getting Started
+A Next.js application that displays apartment deals from an Airtable database.
 
-First, run the development server:
+## Local Development
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+1. Clone the repository
+2. Install dependencies:
+   ```
+   npm install
+   ```
+3. Create a `.env.local` file with your Airtable credentials:
+   ```
+   AIRTABLE_API_KEY=your_airtable_api_key
+   AIRTABLE_BASE_ID=your_airtable_base_id
+   AIRTABLE_TABLE_NAME=your_airtable_table_name
+   ```
+4. Run the development server:
+   ```
+   npm run dev
+   ```
+5. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Deploying to Vercel
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Option 1: Deploy with Vercel CLI (Recommended)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Install the Vercel CLI:
 
-## Learn More
+   ```
+   npm install -g vercel
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+2. Login to Vercel:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+   ```
+   vercel login
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+3. Deploy the project:
 
-## Deploy on Vercel
+   ```
+   vercel
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+4. Follow the prompts to set up your project. When asked about environment variables, you'll need to provide your Airtable credentials.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Option 2: Deploy via Vercel Dashboard
+
+1. Push your code to a GitHub repository
+
+2. Go to [Vercel Dashboard](https://vercel.com/dashboard)
+
+3. Click "New Project"
+
+4. Import your GitHub repository
+
+5. Configure the project:
+
+   - Framework Preset: Next.js
+   - Environment Variables: Add your Airtable credentials
+     - `AIRTABLE_API_KEY`
+     - `AIRTABLE_BASE_ID`
+     - `AIRTABLE_TABLE_NAME`
+
+6. Click "Deploy"
+
+## Important Notes for Deployment
+
+- Make sure to set up your environment variables in the Vercel dashboard
+- The free tier of Vercel is sufficient for this application
+- Your Airtable API key should be kept secret and only added through environment variables
+- The application will automatically connect to your Airtable database once deployed with the correct environment variables
