@@ -4,9 +4,17 @@ import { Fragment } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { X, MapPin, ExternalLink, Check } from "lucide-react";
 import { Apartment } from "@/lib/airtable";
+import Image from "next/image";
+
+interface ApartmentImage {
+  url: string;
+  filename: string;
+}
 
 interface ApartmentDetailsPanelProps {
-  apartment: Apartment | null;
+  apartment: Apartment & {
+    images?: ApartmentImage[];
+  };
   isOpen: boolean;
   onClose: () => void;
 }
@@ -68,18 +76,37 @@ export default function ApartmentDetailsPanel({
                     <div className="relative flex-1 px-4 py-6 sm:px-6">
                       {/* Property Details */}
                       <div className="space-y-6">
-                        {/* Logo and Photos */}
+                        {/* Thumbnail and Photos */}
                         <div className="space-y-4">
+                          {apartment.thumbnail && (
+                            <div>
+                              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                                Featured Image
+                              </h3>
+                              <div className="relative h-64 w-full">
+                                <Image
+                                  src={apartment.thumbnail}
+                                  alt={`${apartment.propertyName} thumbnail`}
+                                  fill
+                                  className="object-cover rounded-lg"
+                                />
+                              </div>
+                            </div>
+                          )}
+
                           {apartment.logo && (
                             <div>
                               <h3 className="text-lg font-medium text-gray-900 mb-2">
                                 Property Logo
                               </h3>
-                              <img
-                                src={apartment.logo}
-                                alt={`${apartment.propertyName} logo`}
-                                className="h-16 object-contain"
-                              />
+                              <div className="relative h-16">
+                                <Image
+                                  src={apartment.logo}
+                                  alt={`${apartment.propertyName} logo`}
+                                  fill
+                                  className="object-contain"
+                                />
+                              </div>
                             </div>
                           )}
 
@@ -90,14 +117,16 @@ export default function ApartmentDetailsPanel({
                               </h3>
                               <div className="grid grid-cols-2 gap-4">
                                 {apartment.photos.map((photo, index) => (
-                                  <img
-                                    key={index}
-                                    src={photo}
-                                    alt={`${apartment.propertyName} photo ${
-                                      index + 1
-                                    }`}
-                                    className="rounded-lg object-cover w-full h-48"
-                                  />
+                                  <div key={index} className="relative h-48">
+                                    <Image
+                                      src={photo}
+                                      alt={`${apartment.propertyName} photo ${
+                                        index + 1
+                                      }`}
+                                      fill
+                                      className="object-cover rounded-lg"
+                                    />
+                                  </div>
                                 ))}
                               </div>
                             </div>

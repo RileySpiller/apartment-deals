@@ -1,12 +1,13 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import ApartmentTable from "@/components/apartment-table";
 import CitySearch from "@/components/city-search";
 
-export default function SearchPage() {
+function SearchContent() {
   const searchParams = useSearchParams();
   const city = searchParams.get("city");
 
@@ -35,5 +36,13 @@ export default function SearchPage() {
       </div>
       <Footer />
     </main>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SearchContent />
+    </Suspense>
   );
 }

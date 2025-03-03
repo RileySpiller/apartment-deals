@@ -1,29 +1,50 @@
 "use client";
 
 import { Check, ChevronDown, MapPin, ExternalLink, X } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Apartment } from "@/lib/airtable";
 import { useRouter } from "next/navigation";
 import ApartmentDetailsPanel from "./apartment-details-panel";
+import Image from "next/image";
+
+interface ApartmentImage {
+  url: string;
+  filename: string;
+}
+
+interface ExtendedApartment extends Apartment {
+  images?: ApartmentImage[];
+}
 
 interface ApartmentTableProps {
   initialCity?: string;
+  apartments?: ExtendedApartment[];
 }
 
-export default function ApartmentTable({ initialCity }: ApartmentTableProps) {
+// Add sort state
+type SortConfig = {
+  key: keyof ExtendedApartment;
+  direction: "ascending" | "descending";
+} | null;
+
+export default function ApartmentTable({
+  initialCity = "",
+  apartments = [],
+}: ApartmentTableProps) {
   const router = useRouter();
-  const [apartments, setApartments] = useState<Apartment[]>([]);
-  const [filteredApartments, setFilteredApartments] = useState<Apartment[]>([]);
+  const [apartmentList, setApartmentList] =
+    useState<ExtendedApartment[]>(apartments);
+  const [filteredApartments, setFilteredApartments] =
+    useState<ExtendedApartment[]>(apartments);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedApartment, setSelectedApartment] = useState<Apartment | null>(
-    null
-  );
+  const [selectedApartment, setSelectedApartment] =
+    useState<ExtendedApartment | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
   // Filter states
-  const [filters, setFilters] = useState({
-    city: initialCity || "",
+  const [filters, setFilters] = useState<Record<string, string>>({
+    city: initialCity,
     dealScore: "",
     priceScore: "",
     lookAndLease: "",
@@ -41,88 +62,83 @@ export default function ApartmentTable({ initialCity }: ApartmentTableProps) {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
   // Add sort state
-  const [sortConfig, setSortConfig] = useState<{
-    key: keyof Apartment;
-    direction: "asc" | "desc";
-  } | null>(null);
+  const [sortConfig, setSortConfig] = useState<SortConfig>(null);
+
+  const sortData = useCallback(() => {
+    if (!sortConfig) {
+      return;
+    }
+
+    const sorted = [...filteredApartments].sort((a, b) => {
+      if (sortConfig.key === "dealScore") {
+        const aScore = Number(a.dealScore) || 0;
+        const bScore = Number(b.dealScore) || 0;
+        return sortConfig.direction === "ascending"
+          ? aScore - bScore
+          : bScore - aScore;
+      }
+
+      if (sortConfig.key === "propertyName" || sortConfig.key === "city") {
+        const aValue = String(a[sortConfig.key]).toLowerCase();
+        const bValue = String(b[sortConfig.key]).toLowerCase();
+        return sortConfig.direction === "ascending"
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      }
+
+      return 0;
+    });
+
+    setFilteredApartments(sorted);
+  }, [sortConfig, filteredApartments]);
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        setLoading(true);
-        const response = await fetch("/api/apartments");
+    if (sortConfig?.key) {
+      sortData();
+    }
+  }, [sortConfig, sortData]);
 
+  useEffect(() => {
+    const fetchApartments = async () => {
+      try {
+        const response = await fetch("/api/apartments");
         if (!response.ok) {
           throw new Error("Failed to fetch apartments");
         }
-
         const data = await response.json();
-        setApartments(data);
+        setApartmentList(data);
         setFilteredApartments(data);
-        setError(null);
       } catch (err) {
-        console.error("Error fetching apartments:", err);
-        setError("Failed to load apartments. Please try again later.");
+        setError(err instanceof Error ? err.message : "An error occurred");
       } finally {
         setLoading(false);
       }
-    }
+    };
 
-    fetchData();
+    fetchApartments();
   }, []);
 
-  // Apply filters whenever filters state changes
+  // Apply filters
   useEffect(() => {
-    let result = [...apartments];
-
-    // Apply each filter
-    if (filters.city) {
-      result = result.filter((apt) => apt.city === filters.city);
-    }
-
-    if (filters.dealScore) {
-      result = result.filter((apt) => apt.dealScore === filters.dealScore);
-    }
-
-    if (filters.lookAndLease) {
-      result = result.filter(
-        (apt) => apt.lookAndLease === (filters.lookAndLease === "Yes")
-      );
-    }
-
-    if (filters.advertised) {
-      result = result.filter(
-        (apt) => apt.advertised === (filters.advertised === "Yes")
-      );
-    }
-
-    if (filters.freeRent) {
-      result = result.filter((apt) => apt.freeRent?.includes(filters.freeRent));
-    }
-
-    if (filters.adFavorite) {
-      result = result.filter(
-        (apt) => (apt.adFavorite === true) === (filters.adFavorite === "Yes")
-      );
-    }
-
-    if (filters.appliesTo) {
-      result = result.filter((apt) =>
-        apt.appliesTo?.includes(filters.appliesTo)
-      );
-    }
-
-    if (filters.minimumLeaseTerm) {
-      result = result.filter((apt) =>
-        apt.minimumLeaseTerm?.includes(filters.minimumLeaseTerm)
-      );
-    }
-
-    // Apply sorting
-    result = sortData(result);
+    const result = apartmentList.filter((apartment) => {
+      return Object.entries(filters).every(([key, value]) => {
+        if (!value) return true;
+        const apartmentValue = apartment[key as keyof ExtendedApartment];
+        return String(apartmentValue)
+          .toLowerCase()
+          .includes(value.toLowerCase());
+      });
+    });
 
     setFilteredApartments(result);
-  }, [filters, apartments, sortConfig]);
+  }, [filters, apartmentList]);
+
+  // Apply sort
+  useEffect(() => {
+    if (sortConfig?.key) {
+      sortData();
+    }
+  }, [sortConfig, sortData]);
 
   // Toggle dropdown
   const toggleDropdown = (dropdown: string) => {
@@ -145,7 +161,7 @@ export default function ApartmentTable({ initialCity }: ApartmentTableProps) {
   // Clear all filters
   const clearFilters = () => {
     setFilters({
-      city: initialCity || "",
+      city: initialCity,
       dealScore: "",
       priceScore: "",
       lookAndLease: "",
@@ -161,15 +177,21 @@ export default function ApartmentTable({ initialCity }: ApartmentTableProps) {
   };
 
   // Get unique values for filter options
-  const getUniqueValues = (field: keyof Apartment) => {
+  const getUniqueValues = (field: keyof ExtendedApartment) => {
     const values = new Set<string>();
 
-    apartments.forEach((apt) => {
+    apartmentList.forEach((apt) => {
       const value = apt[field];
-      if (Array.isArray(value)) {
-        value.forEach((v) => values.add(v));
-      } else if (value !== undefined && value !== null) {
-        values.add(String(value));
+      if (value !== undefined && value !== null) {
+        if (Array.isArray(value)) {
+          value.forEach((v) => {
+            if (typeof v === "string") {
+              values.add(v);
+            }
+          });
+        } else {
+          values.add(String(value));
+        }
       }
     });
 
@@ -270,46 +292,21 @@ export default function ApartmentTable({ initialCity }: ApartmentTableProps) {
     </div>
   );
 
-  // Add sort function
-  const sortData = (data: Apartment[]) => {
-    if (!sortConfig) return data;
-
-    return [...data].sort((a, b) => {
-      const aValue = a[sortConfig.key];
-      const bValue = b[sortConfig.key];
-
-      if (aValue === undefined && bValue === undefined) return 0;
-      if (aValue === undefined) return 1;
-      if (bValue === undefined) return -1;
-
-      let comparison = 0;
-      if (Array.isArray(aValue) && Array.isArray(bValue)) {
-        comparison = aValue.join(",").localeCompare(bValue.join(","));
-      } else if (typeof aValue === "boolean" && typeof bValue === "boolean") {
-        comparison = aValue === bValue ? 0 : aValue ? -1 : 1;
-      } else {
-        comparison = String(aValue).localeCompare(String(bValue));
-      }
-
-      return sortConfig.direction === "asc" ? comparison : -comparison;
-    });
-  };
-
   // Add sort handler
-  const handleSort = (key: keyof Apartment) => {
+  const handleSort = (key: keyof ExtendedApartment) => {
     setSortConfig((currentSort) => {
       if (currentSort?.key === key) {
-        if (currentSort.direction === "asc") {
-          return { key, direction: "desc" };
+        if (currentSort.direction === "ascending") {
+          return { key, direction: "descending" };
         }
         return null;
       }
-      return { key, direction: "asc" };
+      return { key, direction: "ascending" };
     });
   };
 
   // Handle apartment selection
-  const handleApartmentClick = (apartment: Apartment) => {
+  const handleApartmentClick = (apartment: ExtendedApartment) => {
     // Check if we're on mobile
     if (window.innerWidth < 768) {
       router.push(`/apartments/${apartment.id}`);
@@ -327,7 +324,7 @@ export default function ApartmentTable({ initialCity }: ApartmentTableProps) {
     return <div className="text-center py-10 text-red-500">{error}</div>;
   }
 
-  if (apartments.length === 0) {
+  if (apartmentList.length === 0) {
     return (
       <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 p-4 rounded-md">
         No apartment deals found. Check back soon for new listings!
@@ -338,15 +335,15 @@ export default function ApartmentTable({ initialCity }: ApartmentTableProps) {
   // Get unique values for filters
   const dealScores = getUniqueValues("dealScore");
   const cities = getUniqueValues("city");
-  const freeRentOptions = apartments
+  const freeRentOptions = apartmentList
     .flatMap((apt) => apt.freeRent || [])
     .filter((v, i, a) => a.indexOf(v) === i)
     .sort();
-  const appliesToOptions = apartments
+  const appliesToOptions = apartmentList
     .flatMap((apt) => apt.appliesTo || [])
     .filter((v, i, a) => a.indexOf(v) === i)
     .sort();
-  const minimumLeaseTermOptions = apartments
+  const minimumLeaseTermOptions = apartmentList
     .flatMap((apt) => apt.minimumLeaseTerm || [])
     .filter((v, i, a) => a.indexOf(v) === i)
     .sort();
@@ -408,7 +405,7 @@ export default function ApartmentTable({ initialCity }: ApartmentTableProps) {
                   City
                   {sortConfig?.key === "city" && (
                     <span className="ml-1">
-                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      {sortConfig.direction === "ascending" ? "↑" : "↓"}
                     </span>
                   )}
                 </div>
@@ -421,7 +418,7 @@ export default function ApartmentTable({ initialCity }: ApartmentTableProps) {
                   Property Name
                   {sortConfig?.key === "propertyName" && (
                     <span className="ml-1">
-                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      {sortConfig.direction === "ascending" ? "↑" : "↓"}
                     </span>
                   )}
                 </div>
@@ -434,7 +431,7 @@ export default function ApartmentTable({ initialCity }: ApartmentTableProps) {
                   AD Fav
                   {sortConfig?.key === "adFavorite" && (
                     <span className="ml-1">
-                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      {sortConfig.direction === "ascending" ? "↑" : "↓"}
                     </span>
                   )}
                 </div>
@@ -447,7 +444,7 @@ export default function ApartmentTable({ initialCity }: ApartmentTableProps) {
                   Deal Score
                   {sortConfig?.key === "dealScore" && (
                     <span className="ml-1">
-                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      {sortConfig.direction === "ascending" ? "↑" : "↓"}
                     </span>
                   )}
                 </div>
@@ -460,7 +457,7 @@ export default function ApartmentTable({ initialCity }: ApartmentTableProps) {
                   Adv
                   {sortConfig?.key === "advertised" && (
                     <span className="ml-1">
-                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      {sortConfig.direction === "ascending" ? "↑" : "↓"}
                     </span>
                   )}
                 </div>
@@ -473,7 +470,7 @@ export default function ApartmentTable({ initialCity }: ApartmentTableProps) {
                   L&L
                   {sortConfig?.key === "lookAndLease" && (
                     <span className="ml-1">
-                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      {sortConfig.direction === "ascending" ? "↑" : "↓"}
                     </span>
                   )}
                 </div>
@@ -486,7 +483,7 @@ export default function ApartmentTable({ initialCity }: ApartmentTableProps) {
                   Deal Ends
                   {sortConfig?.key === "dealEnds" && (
                     <span className="ml-1">
-                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      {sortConfig.direction === "ascending" ? "↑" : "↓"}
                     </span>
                   )}
                 </div>
@@ -499,7 +496,7 @@ export default function ApartmentTable({ initialCity }: ApartmentTableProps) {
                   Applies To
                   {sortConfig?.key === "appliesTo" && (
                     <span className="ml-1">
-                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      {sortConfig.direction === "ascending" ? "↑" : "↓"}
                     </span>
                   )}
                 </div>
@@ -512,7 +509,7 @@ export default function ApartmentTable({ initialCity }: ApartmentTableProps) {
                   Free Rent
                   {sortConfig?.key === "freeRent" && (
                     <span className="ml-1">
-                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      {sortConfig.direction === "ascending" ? "↑" : "↓"}
                     </span>
                   )}
                 </div>
@@ -525,7 +522,7 @@ export default function ApartmentTable({ initialCity }: ApartmentTableProps) {
                   App Fee
                   {sortConfig?.key === "applicationFee" && (
                     <span className="ml-1">
-                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      {sortConfig.direction === "ascending" ? "↑" : "↓"}
                     </span>
                   )}
                 </div>
@@ -538,7 +535,7 @@ export default function ApartmentTable({ initialCity }: ApartmentTableProps) {
                   Admin Fee
                   {sortConfig?.key === "adminFee" && (
                     <span className="ml-1">
-                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      {sortConfig.direction === "ascending" ? "↑" : "↓"}
                     </span>
                   )}
                 </div>
@@ -551,7 +548,7 @@ export default function ApartmentTable({ initialCity }: ApartmentTableProps) {
                   Gift Card
                   {sortConfig?.key === "giftCard" && (
                     <span className="ml-1">
-                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      {sortConfig.direction === "ascending" ? "↑" : "↓"}
                     </span>
                   )}
                 </div>
@@ -564,7 +561,7 @@ export default function ApartmentTable({ initialCity }: ApartmentTableProps) {
                   Security Dep
                   {sortConfig?.key === "securityDeposit" && (
                     <span className="ml-1">
-                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      {sortConfig.direction === "ascending" ? "↑" : "↓"}
                     </span>
                   )}
                 </div>
@@ -577,7 +574,7 @@ export default function ApartmentTable({ initialCity }: ApartmentTableProps) {
                   Lease Disc
                   {sortConfig?.key === "leaseDiscount" && (
                     <span className="ml-1">
-                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      {sortConfig.direction === "ascending" ? "↑" : "↓"}
                     </span>
                   )}
                 </div>
@@ -590,7 +587,7 @@ export default function ApartmentTable({ initialCity }: ApartmentTableProps) {
                   Deal Notes
                   {sortConfig?.key === "dealNotes" && (
                     <span className="ml-1">
-                      {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      {sortConfig.direction === "ascending" ? "↑" : "↓"}
                     </span>
                   )}
                 </div>
@@ -609,13 +606,23 @@ export default function ApartmentTable({ initialCity }: ApartmentTableProps) {
                 </td>
                 <td className="px-2 py-1 whitespace-nowrap">
                   <div className="flex items-start space-x-2">
-                    {apartment.thumbnail && (
-                      <img
+                    {apartment.thumbnail ? (
+                      <Image
                         src={apartment.thumbnail}
                         alt={`${apartment.propertyName} thumbnail`}
-                        className="h-12 w-12 object-cover rounded-md flex-shrink-0"
+                        width={100}
+                        height={75}
+                        className="rounded-md object-cover"
                       />
-                    )}
+                    ) : apartment.photos && apartment.photos.length > 0 ? (
+                      <Image
+                        src={apartment.photos[0]}
+                        alt={`${apartment.propertyName} photo`}
+                        width={100}
+                        height={75}
+                        className="rounded-md object-cover"
+                      />
+                    ) : null}
                     <div className="flex flex-col">
                       <div className="text-xs font-medium text-gray-900">
                         {apartment.propertyName}
@@ -745,14 +752,16 @@ export default function ApartmentTable({ initialCity }: ApartmentTableProps) {
       </div>
 
       {/* Add the details panel */}
-      <ApartmentDetailsPanel
-        apartment={selectedApartment}
-        isOpen={isPanelOpen}
-        onClose={() => {
-          setIsPanelOpen(false);
-          setSelectedApartment(null);
-        }}
-      />
+      {selectedApartment && (
+        <ApartmentDetailsPanel
+          apartment={selectedApartment}
+          isOpen={isPanelOpen}
+          onClose={() => {
+            setIsPanelOpen(false);
+            setSelectedApartment(null);
+          }}
+        />
+      )}
     </div>
   );
 }

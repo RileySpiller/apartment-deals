@@ -1,6 +1,7 @@
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 import { Users, Building, Award, MapPin } from "lucide-react";
+import Image from "next/image";
 
 export default function AboutUs() {
   return (
@@ -49,12 +50,16 @@ export default function AboutUs() {
                     </p>
                   </div>
                 </div>
-                <div className="bg-gray-100 rounded-lg overflow-hidden">
-                  <div className="aspect-w-16 aspect-h-9 h-80 bg-gray-300">
-                    {/* Placeholder for team image */}
-                    <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                      <Users className="h-16 w-16 text-gray-400" />
-                    </div>
+                <div className="rounded-lg overflow-hidden">
+                  <div className="relative w-full h-[500px]">
+                    <Image
+                      src="/images/team.jpg"
+                      alt="The Apartment Deals team"
+                      fill
+                      className="object-cover rounded-2xl"
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                      quality={100}
+                    />
                   </div>
                 </div>
               </div>
@@ -108,32 +113,34 @@ export default function AboutUs() {
               <h2 className="text-2xl font-bold text-gray-900 mb-10 text-center">
                 Our Team
               </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                 {[
                   {
-                    name: "Sarah Johnson",
+                    name: "Amani Anai",
                     title: "Founder & CEO",
                     bio: "Former real estate executive with 15+ years of experience in the rental market.",
+                    image: "/images/amani-anai.jpg",
                   },
                   {
-                    name: "Michael Chen",
+                    name: "Riley Spiller",
                     title: "CTO",
                     bio: "Tech entrepreneur with a passion for making real estate data more accessible.",
-                  },
-                  {
-                    name: "Aisha Patel",
-                    title: "Head of Partnerships",
-                    bio: "Building relationships with property managers and real estate professionals nationwide.",
-                  },
-                  {
-                    name: "David Rodriguez",
-                    title: "Lead Data Analyst",
-                    bio: "Crunching the numbers to identify trends and the best deals in the rental market.",
+                    image: "/images/riley-spiller.jpg",
                   },
                 ].map((person, index) => (
                   <div key={index} className="text-center">
-                    <div className="w-32 h-32 bg-gray-200 rounded-full mx-auto mb-4 flex items-center justify-center">
-                      <Users className="h-10 w-10 text-gray-400" />
+                    <div className="relative w-32 h-32 mx-auto mb-4 overflow-hidden rounded-full">
+                      <Image
+                        src={person.image}
+                        alt={person.name}
+                        fill
+                        className={`object-cover ${
+                          person.name === "Riley Spiller"
+                            ? "scale-180"
+                            : "scale-105"
+                        }`}
+                        sizes="(max-width: 768px) 100vw, 50vw"
+                      />
                     </div>
                     <h3 className="text-lg font-medium text-gray-900">
                       {person.name}

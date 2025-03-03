@@ -1,24 +1,27 @@
+"use client";
+
 import { Flame } from "lucide-react";
+import Image from "next/image";
 
 export default function FeaturedProperties() {
   const properties = [
     {
       id: 1,
-      name: "Boardwalk Research Luxury Apartments",
+      name: "Luxury Downtown Loft",
       image: "/images/property-1.png",
-      special: "1 Month Free + $500 Gift Card",
+      special: "First Month Free",
     },
     {
       id: 2,
-      name: "Berkshire at the Rim Apartments",
+      name: "Modern Midtown Studio",
       image: "/images/property-2.png",
-      special: "6 Weeks Free + No Admin Fee",
+      special: "$500 Move-in Special",
     },
     {
       id: 3,
-      name: "MELA Luxury Apartments",
+      name: "Uptown Heights",
       image: "/images/property-3.png",
-      special: "2 Months Free on 12-Month Lease",
+      special: "No Security Deposit",
     },
     {
       id: 4,
@@ -45,10 +48,11 @@ export default function FeaturedProperties() {
               className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
             >
               <div className="relative h-48">
-                <img
+                <Image
                   src={property.image}
-                  alt={property.name}
-                  className="w-full h-full object-cover"
+                  alt={`${property.name} property`}
+                  fill
+                  className="object-cover rounded-t-lg"
                 />
               </div>
               <div className="p-4">

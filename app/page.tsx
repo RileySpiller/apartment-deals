@@ -10,19 +10,29 @@ export default function Home() {
     <main className="min-h-screen flex flex-col">
       <Header />
       <div className="flex-1">
-        <div className="bg-white py-12">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center">
-              <h1 className="text-4xl font-bold text-gray-900 mb-6">
-                Rental deals and move-in specials for apartments in your city,
-                updated daily.
-              </h1>
-              <div className="max-w-2xl mx-auto">
-                <CitySearch />
-              </div>
+        <section className="py-16 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto">
+            <h1 className="text-[56px] leading-[64px] font-bold text-[#0F172A] max-w-[1000px]">
+              Rental deals and move-in specials for apartments in your city,
+              updated <span className="italic font-serif">daily</span>.
+            </h1>
+
+            <div className="mt-12 max-w-[456px]">
+              <CitySearch />
             </div>
+
+            <p className="mt-6 text-base text-gray-600">
+              Are you an apartment finder or leasing agent?{" "}
+              <a
+                href="/daily-report"
+                className="text-[#00A6E6] hover:underline"
+              >
+                Get our daily report
+              </a>
+              .
+            </p>
           </div>
-        </div>
+        </section>
         <FeaturedProperties />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <ApartmentTable />
